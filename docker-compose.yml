@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  database:
+    image: mongo:6.0
+    container_name: mern_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - mern_network
+    restart: always
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mern_backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://database:27017/mern_enterprise
+      - JWT_ACCESS_SECRET=dev-access-secret-key-12345
+      - JWT_REFRESH_SECRET=dev-refresh-secret-key-67890
+      - FRONTEND_URL=http://localhost:5173
+    depends_on:
+      - database
+    networks:
+      - mern_network
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: mern_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - mern_network
+    restart: always
+
+volumes:
+  mongo_data:
+
+networks:
+  mern_network:
+    driver: bridge
