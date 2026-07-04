@@ -8,15 +8,16 @@ import ForgotPassword from '../features/auth/ForgotPassword';
 import ResetPassword from '../features/auth/ResetPassword';
 import VerifyEmail from '../features/auth/VerifyEmail';
 import { useAuth } from '../context/AuthContext';
+import ResumeUpload from '../features/dashboard/ResumeUpload';
 import Button from '../components/common/Button';
 
-// Quick Mock Dashboard to demonstrate state persistence and logout operations
+// Candidate Dashboard with Resume Upload & ATS Analysis
 const Dashboard = () => {
   const { user, logout } = useAuth();
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-900 bg-slate-950/80 px-6 py-4 backdrop-blur-md">
+      <header className="border-b border-slate-900 bg-slate-950/80 px-6 py-4 backdrop-blur-md sticky top-0 z-50">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <h1 className="text-xl font-bold tracking-wider text-indigo-400">AI InterviewOS</h1>
           <div className="flex items-center space-x-6">
@@ -30,19 +31,8 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md rounded-2xl border border-slate-900 bg-slate-900/30 p-8 backdrop-blur-xl shadow-2xl">
-          <h2 className="text-3xl font-extrabold text-white mb-4">Dashboard</h2>
-          <p className="text-slate-400 text-sm mb-6 leading-relaxed">
-            Welcome to the AI Mock Interview Suite! You have successfully signed in using our secure HTTP-only session cookies.
-          </p>
-          <div className="rounded-lg bg-indigo-500/10 border border-indigo-500/20 p-4">
-            <p className="text-xs text-indigo-400 font-semibold uppercase tracking-widest mb-1">
-              Authorized Role
-            </p>
-            <p className="text-sm text-slate-300 font-medium capitalize">{user?.role} Portal</p>
-          </div>
-        </div>
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col p-6">
+        <ResumeUpload />
       </main>
     </div>
   );

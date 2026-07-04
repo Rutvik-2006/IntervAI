@@ -28,7 +28,7 @@ const sendTokenResponse = (user, statusCode, res) => {
     ),
     httpOnly: true, // Prevents XSS script execution accessing token cookies
     secure: process.env.NODE_ENV === 'production' || (req && (req.secure || req.headers['x-forwarded-proto'] === 'https')),
-    sameSite: 'strict', // Mitigates Cross-Site Request Forgery (CSRF)
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
   };
 
   // Set cookies
