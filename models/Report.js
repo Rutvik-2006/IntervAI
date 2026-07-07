@@ -53,6 +53,5 @@ const ReportSchema = new mongoose.Schema(
 
 // Indexes
 ReportSchema.index({ userId: 1 });
-ReportSchema.index({ sessionId: 1 });
 
 module.exports = mongoose.model('Report', ReportSchema);

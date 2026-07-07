@@ -3,6 +3,19 @@ node_modules/
 jspm_packages/
 web_modules/
 
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+.pytest_cache/
+*.egg-info/
+
 # Debug logs
 npm-debug.log*
 yarn-debug.log*
@@ -21,13 +34,19 @@ build/
 .nuxt/
 out/
 
-# Environment files
+# Environment files & Secrets
 .env
 .env.local
 .env.development
 .env.test
 .env.production
 .env.*.local
+*.pem
+*.key
+
+# File Uploads & Local Media
+uploads/
+temp/
 
 # IDE configurations
 .vscode/*
@@ -40,5 +59,5 @@ out/
 *.sln
 *.sw?
 
-# Docker logs and assets
+# Docker logs and overrides
 docker-compose.override.yml

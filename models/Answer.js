@@ -47,6 +47,5 @@ const AnswerSchema = new mongoose.Schema(
 
 // Indexes
 AnswerSchema.index({ sessionId: 1 });
-AnswerSchema.index({ questionId: 1 });
 
 module.exports = mongoose.model('Answer', AnswerSchema);

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import Login from '../features/auth/Login';
@@ -10,19 +10,52 @@ import VerifyEmail from '../features/auth/VerifyEmail';
 import { useAuth } from '../context/AuthContext';
 import ResumeUpload from '../features/dashboard/ResumeUpload';
 import Button from '../components/common/Button';
+import StartInterviewModal from '../features/interview/StartInterviewModal';
+import TextInterviewRoom from '../features/interview/TextInterviewRoom';
+import InterviewReportView from '../features/interview/InterviewReportView';
+import API from '../api/axios';
 
 // Candidate Dashboard with Resume Upload & ATS Analysis
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const navigate = useNavigate();
+
+  const [startError, setStartError] = useState(null);
+
+  const handleStartInterview = async (config) => {
+    try {
+      setStarting(true);
+      setStartError(null);
+      const response = await API.post('/interviews/start', config);
+      if (response.data && response.data.data?.session) {
+        const sessionId = response.data.data.session._id;
+        setIsModalOpen(false);
+        navigate(`/interview/${sessionId}`);
+      }
+    } catch (err) {
+      console.error('Failed to start interview session:', err);
+      setStartError(err.response?.data?.message || 'Failed to start interview session. Please ensure your backend is running.');
+    } finally {
+      setStarting(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
       <header className="border-b border-slate-900 bg-slate-950/80 px-6 py-4 backdrop-blur-md sticky top-0 z-50">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <h1 className="text-xl font-bold tracking-wider text-indigo-400">AI InterviewOS</h1>
-          <div className="flex items-center space-x-6">
-            <span className="text-sm font-medium text-slate-400">
-              Signed in as: <strong className="text-slate-200">{user?.email}</strong> ({user?.role})
+          <div className="flex items-center space-x-4">
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="!py-2 !px-4 text-xs flex items-center gap-1.5"
+            >
+              Start AI Mock Interview
+            </Button>
+            <span className="text-sm font-medium text-slate-400 hidden md:inline">
+              Signed in as: <strong className="text-slate-200">{user?.email}</strong>
             </span>
             <Button onClick={logout} variant="secondary" className="!py-2 !px-4">
               Logout
@@ -34,6 +67,14 @@ const Dashboard = () => {
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col p-6">
         <ResumeUpload />
       </main>
+
+      <StartInterviewModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onStart={handleStartInterview}
+        loading={starting}
+        error={startError}
+      />
     </div>
   );
 };
@@ -63,6 +104,8 @@ const AppRoutes = () => {
       {/* Private Protected Routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/interview/:sessionId" element={<TextInterviewRoom />} />
+        <Route path="/interview/:sessionId/report" element={<InterviewReportView />} />
       </Route>
 
       {/* Role specific routing example */}

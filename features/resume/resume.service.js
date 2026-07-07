@@ -185,7 +185,32 @@ class ResumeService {
     }
 
     const parsed = this.parseResumeText(rawText);
-    const { atsScore, atsFeedback } = this.calculateATSScoreAndFeedback(parsed, rawText);
+    let { atsScore, atsFeedback } = this.calculateATSScoreAndFeedback(parsed, rawText);
+    let extractedSkills = parsed.matchedSkills;
+
+    // Call AI Engine for live LLM ATS resume evaluation
+    const aiEngine = require('../../utils/aiEngine');
+    const aiAtsResult = await aiEngine.analyzeResumeWithAI(rawText, 'Software Engineer');
+    if (aiAtsResult && aiAtsResult.atsScore) {
+      atsScore = aiAtsResult.atsScore;
+      if (aiAtsResult.extractedSkills && aiAtsResult.extractedSkills.length > 0) {
+        extractedSkills = Array.from(new Set([...parsed.matchedSkills, ...aiAtsResult.extractedSkills]));
+      }
+
+      atsFeedback = `### 🤖 AI ATS Score: ${atsScore}/100\n\n`;
+      if (aiAtsResult.strengths && aiAtsResult.strengths.length > 0) {
+        atsFeedback += `#### 💡 Key Strengths:\n`;
+        aiAtsResult.strengths.forEach((s) => (atsFeedback += `- ${s}\n`));
+      }
+      if (aiAtsResult.weaknesses && aiAtsResult.weaknesses.length > 0) {
+        atsFeedback += `\n#### ⚠️ Areas for Improvement:\n`;
+        aiAtsResult.weaknesses.forEach((w) => (atsFeedback += `- ${w}\n`));
+      }
+      if (aiAtsResult.suggestions && aiAtsResult.suggestions.length > 0) {
+        atsFeedback += `\n#### 🎯 AI Recommendations:\n`;
+        aiAtsResult.suggestions.forEach((rec) => (atsFeedback += `- ${rec}\n`));
+      }
+    }
 
     // Deactivate previous active resumes for this user
     await resumeRepository.deactivateAllResumesForUser(userId);
@@ -203,7 +228,7 @@ class ResumeService {
       fileUrl: `data:application/pdf;base64,${file.buffer.toString('base64')}`,
       fileName: file.originalname,
       parsedData,
-      skills: parsed.matchedSkills,
+      skills: extractedSkills,
       atsScore,
       atsFeedback,
       rawText,

@@ -39,9 +39,8 @@ const QuestionSchema = new mongoose.Schema(
     },
     skills: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Skill',
-        required: true,
+        type: String,
+        trim: true,
       },
     ],
     idealAnswer: {
