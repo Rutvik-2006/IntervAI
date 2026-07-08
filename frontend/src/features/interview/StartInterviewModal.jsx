@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Building2, Briefcase, BarChart2, Layers } from 'lucide-react';
+import { X, Sparkles, Building2, Briefcase, BarChart2, Layers, Volume2, MessageSquare } from 'lucide-react';
 import Button from '../../components/common/Button';
 
 const StartInterviewModal = ({ isOpen, onClose, onStart, loading, error }) => {
@@ -7,6 +7,7 @@ const StartInterviewModal = ({ isOpen, onClose, onStart, loading, error }) => {
     jobRole: 'Software Engineer',
     companyName: 'Google',
     type: 'technical',
+    mode: 'text',
     difficulty: 'medium',
     totalQuestions: 5,
   });
@@ -45,6 +46,41 @@ const StartInterviewModal = ({ isOpen, onClose, onStart, loading, error }) => {
               ⚠️ {error}
             </div>
           )}
+
+          {/* Interview Mode Selector (Text vs Voice) */}
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Interview Mode
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, mode: 'text' }))}
+                className={`flex items-center justify-center space-x-2 rounded-xl border p-3 text-xs font-semibold transition-all ${
+                  formData.mode === 'text'
+                    ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300 shadow-md'
+                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <MessageSquare size={16} />
+                <span>Text Interview</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, mode: 'voice' }))}
+                className={`flex items-center justify-center space-x-2 rounded-xl border p-3 text-xs font-semibold transition-all ${
+                  formData.mode === 'voice'
+                    ? 'border-emerald-500 bg-emerald-600/20 text-emerald-300 shadow-md'
+                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <Volume2 size={16} />
+                <span>Voice (Whisper AI)</span>
+              </button>
+            </div>
+          </div>
+
           {/* Target Company */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">

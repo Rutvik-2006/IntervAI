@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import PublicRoute from './PublicRoute';
 import Login from '../features/auth/Login';
@@ -12,8 +12,46 @@ import ResumeUpload from '../features/dashboard/ResumeUpload';
 import Button from '../components/common/Button';
 import StartInterviewModal from '../features/interview/StartInterviewModal';
 import TextInterviewRoom from '../features/interview/TextInterviewRoom';
+import VoiceInterviewRoom from '../features/interview/VoiceInterviewRoom';
 import InterviewReportView from '../features/interview/InterviewReportView';
 import API from '../api/axios';
+
+// Router component that dispatches to Text or Voice room based on session mode or query param
+const InterviewRoomDispatcher = () => {
+  const { sessionId } = useParams();
+  const [searchParams] = useSearchParams();
+  const [sessionMode, setSessionMode] = useState(searchParams.get('mode') || null);
+  const [loading, setLoading] = useState(!searchParams.get('mode'));
+
+  useEffect(() => {
+    if (!sessionMode) {
+      API.get(`/interviews/${sessionId}/current-question`)
+        .then((res) => {
+          if (res.data?.data?.session?.mode) {
+            setSessionMode(res.data.data.session.mode);
+          } else {
+            setSessionMode('text');
+          }
+        })
+        .catch(() => setSessionMode('text'))
+        .finally(() => setLoading(false));
+    }
+  }, [sessionId, sessionMode]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-400">
+        Loading interview environment...
+      </div>
+    );
+  }
+
+  if (sessionMode === 'voice') {
+    return <VoiceInterviewRoom />;
+  }
+
+  return <TextInterviewRoom />;
+};
 
 // Candidate Dashboard with Resume Upload & ATS Analysis
 const Dashboard = () => {
@@ -30,9 +68,13 @@ const Dashboard = () => {
       setStartError(null);
       const response = await API.post('/interviews/start', config);
       if (response.data && response.data.data?.session) {
-        const sessionId = response.data.data.session._id;
+        const session = response.data.data.session;
         setIsModalOpen(false);
-        navigate(`/interview/${sessionId}`);
+        if (session.mode === 'voice') {
+          navigate(`/interview/${session._id}?mode=voice`);
+        } else {
+          navigate(`/interview/${session._id}`);
+        }
       }
     } catch (err) {
       console.error('Failed to start interview session:', err);
@@ -92,7 +134,7 @@ const Unauthorized = () => (
 const AppRoutes = () => {
   return (
     <Routes>
-      {/* Publicly Accessible Auth Routes (Redirects to dashboard if logged in) */}
+      {/* Publicly Accessible Auth Routes */}
       <Route element={<PublicRoute />}>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -104,18 +146,11 @@ const AppRoutes = () => {
       {/* Private Protected Routes */}
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/interview/:sessionId" element={<TextInterviewRoom />} />
+        <Route path="/interview/:sessionId" element={<InterviewRoomDispatcher />} />
         <Route path="/interview/:sessionId/report" element={<InterviewReportView />} />
       </Route>
 
-      {/* Role specific routing example */}
-      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-        {/* Admin panels would go here */}
-      </Route>
-
       <Route path="/unauthorized" element={<Unauthorized />} />
-
-      {/* Fallback Catch-All Redirect */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

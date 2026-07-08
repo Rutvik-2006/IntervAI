@@ -55,7 +55,7 @@ const InterviewReportView = () => {
     );
   }
 
-  const overallScore = session?.scores?.overall || 75;
+  const overallScore = typeof session?.scores?.overall === 'number' ? session.scores.overall : 0;
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
@@ -106,15 +106,15 @@ const InterviewReportView = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <span className="text-xs text-slate-400 font-medium">Technical Accuracy</span>
-                <p className="text-2xl font-bold text-white mt-1">{session?.scores?.technical || 75}%</p>
+                <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.technical === 'number' ? session.scores.technical : 0}%</p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <span className="text-xs text-slate-400 font-medium">Communication Clarity</span>
-                <p className="text-2xl font-bold text-white mt-1">{session?.scores?.communication || 80}%</p>
+                <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.communication === 'number' ? session.scores.communication : 0}%</p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <span className="text-xs text-slate-400 font-medium">Technical Depth</span>
-                <p className="text-2xl font-bold text-white mt-1">{session?.scores?.confidence || 70}%</p>
+                <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.confidence === 'number' ? session.scores.confidence : 0}%</p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
                 <span className="text-xs text-slate-400 font-medium">Questions Answered</span>
@@ -130,14 +130,20 @@ const InterviewReportView = () => {
             <h3 className="text-base font-bold text-emerald-400 flex items-center gap-2">
               <CheckCircle size={18} /> Key Strengths
             </h3>
-            <ul className="space-y-2 text-sm text-slate-300">
-              {report.strengths.map((st, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-emerald-400">•</span>
-                  <span>{st}</span>
-                </li>
-              ))}
-            </ul>
+            {report.strengths && report.strengths.length > 0 ? (
+              <ul className="space-y-2 text-sm text-slate-300">
+                {report.strengths.map((st, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className="text-emerald-400">•</span>
+                    <span>{st}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-400 italic">
+                No notable technical strengths identified for this session due to brief or incomplete candidate answers.
+              </p>
+            )}
           </div>
 
           <div className="rounded-2xl border border-amber-500/20 bg-amber-950/10 p-6 backdrop-blur-xl space-y-3">

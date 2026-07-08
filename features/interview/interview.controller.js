@@ -32,7 +32,7 @@ class InterviewController {
 
   submitAnswer = catchAsync(async (req, res, next) => {
     const { sessionId } = req.params;
-    const { questionId, candidateAnswer } = req.body;
+    const { questionId, candidateAnswer, duration } = req.body;
 
     if (!candidateAnswer) {
       return next(new AppError('Please provide your answer before submitting.', 400));
@@ -42,7 +42,8 @@ class InterviewController {
       req.user._id,
       sessionId,
       questionId,
-      candidateAnswer
+      candidateAnswer,
+      duration
     );
 
     res.status(200).json({

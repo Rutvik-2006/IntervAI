@@ -193,12 +193,12 @@ class InterviewService {
       // Async request to Python Voice microservice
       pythonAiClient.analyzeVoice(text, 30.0).then((vRes) => {
         if (vRes) voiceMetrics = vRes;
-      }).catch(() => {});
-      
+      }).catch(() => { });
+
       // Async request to Python Vision microservice
       pythonAiClient.analyzeVision(null).then((visRes) => {
         if (visRes) visionMetrics = visRes;
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     return {
@@ -312,7 +312,7 @@ class InterviewService {
     };
   }
 
-  async submitAnswer(userId, sessionId, questionId, candidateAnswer) {
+  async submitAnswer(userId, sessionId, questionId, candidateAnswer, duration = 30.0) {
     const session = await interviewRepository.findSessionById(sessionId);
     if (!session) {
       throw new AppError('Interview session not found.', 404);
@@ -332,7 +332,7 @@ class InterviewService {
     }
 
     if (!question) {
-      throw new AppError('Question not found for current session sequence.', 400);
+      throw new AppError('Question not found for current sequence.', 400);
     }
 
     // Evaluate response using Gemini LLM AI Engine (with heuristic fallback)
@@ -341,10 +341,13 @@ class InterviewService {
       evaluation = this.evaluateCandidateAnswer(question, candidateAnswer);
     }
 
+    console.log(`🤖 [AI Engine] Submitted Answer Evaluated | Score: ${evaluation.score}/100 | Source: ${evaluation.source || 'ai_engine'}`);
+
     // Call Python FastAPI microservice for Voice & Vision metrics
     const pythonAiClient = require('../../utils/pythonAiClient');
     if (candidateAnswer && candidateAnswer.trim().length > 0) {
-      const vMetrics = await pythonAiClient.analyzeVoice(candidateAnswer, 30.0);
+      const speechDuration = duration && Number(duration) > 0 ? Number(duration) : 30.0;
+      const vMetrics = await pythonAiClient.analyzeVoice(candidateAnswer, speechDuration);
       const visMetrics = await pythonAiClient.analyzeVision(null);
       if (vMetrics) evaluation.pythonVoiceMetrics = vMetrics;
       if (visMetrics) evaluation.pythonVisionMetrics = visMetrics;
@@ -404,45 +407,76 @@ class InterviewService {
     let totalCompleteness = 0;
     let totalDepth = 0;
     let totalRelevance = 0;
-
-    const strengths = [];
-    const weaknesses = [];
+    let totalVoiceComm = 0;
+    let voiceCount = 0;
 
     answers.forEach((ans) => {
       const ev = ans.evaluation || {};
-      totalScore += ev.score || 70;
-      if (ev.factors) {
-        totalAccuracy += ev.factors.accuracy;
-        totalCompleteness += ev.factors.completeness;
-        totalDepth += ev.factors.depth;
-        totalRelevance += ev.factors.relevance;
+      const scoreVal = typeof ev.score === 'number' && !isNaN(ev.score) ? ev.score : 0;
+      totalScore += scoreVal;
+
+      const f = ev.factors || {};
+      const acc = typeof f.accuracy === 'number' && !isNaN(f.accuracy) ? f.accuracy : scoreVal;
+      const comp = typeof f.completeness === 'number' && !isNaN(f.completeness) ? f.completeness : scoreVal;
+      const dep = typeof f.depth === 'number' && !isNaN(f.depth) ? f.depth : scoreVal;
+      const rel = typeof f.relevance === 'number' && !isNaN(f.relevance) ? f.relevance : scoreVal;
+
+      totalAccuracy += acc;
+      totalCompleteness += comp;
+      totalDepth += dep;
+      totalRelevance += rel;
+
+      if (ev.pythonVoiceMetrics && typeof ev.pythonVoiceMetrics.communication_score === 'number') {
+        totalVoiceComm += ev.pythonVoiceMetrics.communication_score;
+        voiceCount++;
       }
     });
 
     const count = answers.length || 1;
-    const overallScore = Math.round(totalScore / count);
-    const avgAccuracy = Math.round(totalAccuracy / count);
-    const avgDepth = Math.round(totalDepth / count);
+    const overallScore = Math.min(100, Math.max(0, Math.round(totalScore / count)));
+    const avgAccuracy = Math.min(100, Math.max(0, Math.round(totalAccuracy / count)));
+    const avgDepth = Math.min(100, Math.max(0, Math.round(totalDepth / count)));
 
-    // Generate dynamic AI performance summary report based on actual candidate answers & evaluations
+    let avgCommunication = Math.round((totalCompleteness + totalRelevance) / (2 * count));
+    if (voiceCount > 0) {
+      const avgVoiceComm = Math.round(totalVoiceComm / voiceCount);
+      avgCommunication = Math.round((avgCommunication + avgVoiceComm) / 2);
+    }
+    avgCommunication = Math.min(100, Math.max(0, avgCommunication));
+
+    // Generate dynamic AI performance summary report & AI scores based on actual candidate answers
     const aiReportData = await aiEngine.generateSessionReportSummary(session, answers);
 
-    // Update Session scores summary
+    // Update Session scores summary from AI Report Data (preserving 0 scores)
+    const finalOverallScore = typeof aiReportData?.overallScore === 'number' ? aiReportData.overallScore : overallScore;
+    const finalTechnicalAccuracy = typeof aiReportData?.technicalAccuracy === 'number' ? aiReportData.technicalAccuracy : avgAccuracy;
+    const finalTechnicalDepth = typeof aiReportData?.technicalDepth === 'number' ? aiReportData.technicalDepth : avgDepth;
+    const finalCommunicationClarity = typeof aiReportData?.communicationClarity === 'number' ? aiReportData.communicationClarity : avgCommunication;
+
+    console.log(`🤖 [AI Engine] Session Completed! Final AI Overall Score: ${finalOverallScore}/100 | Technical Accuracy: ${finalTechnicalAccuracy}% | Technical Depth: ${finalTechnicalDepth}% | Communication: ${finalCommunicationClarity}% | Source: ${aiReportData?.source || 'ai_engine'}`);
+
     session.scores = {
-      overall: overallScore,
-      technical: avgAccuracy,
-      communication: Math.round((totalCompleteness + totalRelevance) / (2 * count)),
-      confidence: avgDepth,
+      overall: finalOverallScore,
+      technical: finalTechnicalAccuracy,
+      communication: finalCommunicationClarity,
+      confidence: finalTechnicalDepth,
       coding: 0,
     };
+    session.status = 'completed';
+    session.completedAt = new Date();
+    await session.save();
+
+    const formattedPlan = Array.isArray(aiReportData?.improvementPlan)
+      ? aiReportData.improvementPlan.join('\n')
+      : (aiReportData?.improvementPlan || '1. Practice step-by-step system design trade-offs.\n2. Review core database indexing and caching patterns.\n3. Prepare concrete production metrics.');
 
     const report = await interviewRepository.createReport({
       userId,
       sessionId: session._id,
-      overallSummary: aiReportData.overallSummary,
-      strengths: aiReportData.strengths && aiReportData.strengths.length > 0 ? aiReportData.strengths : strengths,
-      weaknesses: aiReportData.weaknesses && aiReportData.weaknesses.length > 0 ? aiReportData.weaknesses : weaknesses,
-      improvementPlan: aiReportData.improvementPlan,
+      overallSummary: aiReportData?.overallSummary || 'Interview completed.',
+      strengths: Array.isArray(aiReportData?.strengths) ? aiReportData.strengths : [],
+      weaknesses: Array.isArray(aiReportData?.weaknesses) ? aiReportData.weaknesses : ['Focus on elaborating with concrete technical examples and architecture trade-offs.'],
+      improvementPlan: formattedPlan,
       cheatingFlagged: false,
     });
 

@@ -1,13 +1,11 @@
 import os
-import re
 import json
+import re
 import random
-import time
 import requests
 from pathlib import Path
 
 def load_env_file():
-    """Auto-loads .env from current directory or parent directory without external deps"""
     search_paths = [
         Path(".env"),
         Path("../.env"),
@@ -25,13 +23,12 @@ def load_env_file():
                             k, v = line.split("=", 1)
                             k = k.strip()
                             v = v.strip().strip("'\"")
-                            if k and v:
+                            if k and v and not os.getenv(k):
                                 os.environ[k] = v
-            except Exception as e:
-                print(f"⚠️ [Python AI Service] Error reading .env file at {env_path}: {e}")
+            except Exception:
+                pass
             break
 
-# Load environment on import
 load_env_file()
 
 class QuestionService:
@@ -42,47 +39,44 @@ class QuestionService:
         load_env_file()
         self.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
         self.groq_api_key = os.getenv("GROQ_API_KEY", "")
-        self.openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
 
     def _call_gemini(self, prompt: str):
         if not self.gemini_api_key or self.gemini_api_key == "your_gemini_api_key_here":
-            print("[Python AI Service] Skipping Gemini LLM: GEMINI_API_KEY is not set in .env")
             return None
-        models = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-001"]
-        for model in models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.gemini_api_key}"
-            payload = {
-                "contents": [{"parts": [{"text": f"{prompt}\nRespond ONLY in valid raw JSON format without markdown ticks."}]}]
-            }
-            try:
-                res = requests.post(url, json=payload, timeout=9)
-                if res.status_code == 200:
-                    data = res.json()
-                    content = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                    if content:
-                        return {"content": content, "model": model, "service": "Google Gemini"}
-                else:
-                    print(f"❌ [Python AI Service Error] Gemini model '{model}' HTTP {res.status_code}: {res.text[:250]}")
-            except Exception as e:
-                print(f"❌ [Python AI Service Error] Gemini connection error on model '{model}': {e}")
+        
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": f"{prompt}\nRespond ONLY in valid raw JSON format."}]}]
+        }
+        try:
+            res = requests.post(url, json=payload, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                content = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                if content:
+                    return {"content": content, "service": "Gemini Cloud"}
+            else:
+                print(f"❌ [Python AI Service Error] Gemini API HTTP {res.status_code}: {res.text[:200]}")
+        except Exception as e:
+            print(f"❌ [Python AI Service Error] Gemini connection error: {e}")
         return None
 
     def _call_groq(self, prompt: str):
         if not self.groq_api_key or self.groq_api_key == "your_groq_api_key_here":
-            print("ℹ️ [Python AI Service] Skipping Groq LLM: GROQ_API_KEY is not set in .env")
             return None
-        models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        
         headers = {
             "Authorization": f"Bearer {self.groq_api_key}",
             "Content-Type": "application/json"
         }
+        models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
         for model in models:
             payload = {
                 "model": model,
                 "messages": [{"role": "user", "content": f"{prompt}\nRespond ONLY in valid raw JSON format without markdown ticks."}]
             }
             try:
-                res = requests.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers, timeout=8)
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers, timeout=10)
                 if res.status_code == 200:
                     data = res.json()
                     content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -125,12 +119,12 @@ Generate the next highly realistic, organic, and probing interview question. Ret
                 clean_json = re.sub(r'```json|```', '', llm_res["content"]).strip()
                 parsed = json.loads(clean_json)
                 if "text" in parsed and "idealAnswer" in parsed:
-                    print(f"🤖 [Python AI Service] Question generated via {llm_res['service']} ({llm_res['model']})")
+                    print(f"🤖 [Python AI Service] Question generated via {llm_res['service']} ({llm_res.get('model', '')})")
                     return {"text": parsed["text"], "idealAnswer": parsed["idealAnswer"], "source": f"python_{llm_res['service'].lower().replace(' ', '_')}"}
             except Exception as e:
-                print(f"⚠️ [Python AI Service Warning] Failed to parse LLM Question JSON response: {e}\nRaw Content: {llm_res['content'][:200]}")
+                print(f"⚠️ [Python AI Service Warning] Failed to parse LLM Question JSON response: {e}")
 
-        print("⚡ [Python AI Service] Question generated via Smart Local Heuristic Engine (Reason: All LLM providers failed or API keys missing)")
+        print("⚡ [Python AI Service] Question generated via Smart Local Heuristic Engine")
         return self._generate_smart_local_question(session, candidate_answer_text, previous_question_text, resume_skills)
 
     def _generate_smart_local_question(self, session: dict, candidate_answer_text: str, previous_question_text: str, resume_skills: list):
@@ -166,21 +160,26 @@ Generate the next highly realistic, organic, and probing interview question. Ret
         }
 
     def evaluate_answer(self, question_text: str, ideal_answer: str, candidate_answer: str):
-        prompt = f"""You are a Principal AI Tech Interviewer evaluating a candidate's answer.
+        prompt = f"""You are a strict, objective, and unbiased Senior Principal Technical Interviewer evaluating a candidate's answer.
 Question: "{question_text}"
-Ideal Covered Topics: "{ideal_answer or ''}"
+Ideal Target Concepts: "{ideal_answer or ''}"
 Candidate's Spoken/Written Answer: "{candidate_answer}"
 
-Evaluate the answer objectively on a scale of 0-100 across accuracy, completeness, depth, and relevance.
-Return ONLY a valid JSON object in this exact format:
+BE RIGOROUS AND ACCURATE IN SCORING (Scale 0-100):
+- Empty, nonsense, or extremely short ('idk', 'yes', 'no'): Score 0-25.
+- Vague, high-level, or generic answer with no depth: Score 30-55.
+- Partially correct answer covering some core concepts: Score 60-75.
+- Thorough, architecturally sound, comprehensive answer with concrete examples: Score 80-98.
+
+Return ONLY a valid raw JSON object in this exact format:
 {{
-  "score": 85,
-  "feedback": "Detailed constructive feedback explaining what was good and what was missing.",
+  "score": 75,
+  "feedback": "Specific constructive feedback explaining what was good and what was missing in their answer.",
   "factors": {{
-    "accuracy": 85,
-    "completeness": 80,
-    "depth": 85,
-    "relevance": 90
+    "accuracy": 75,
+    "completeness": 70,
+    "depth": 70,
+    "relevance": 85
   }}
 }}"""
 
@@ -190,28 +189,34 @@ Return ONLY a valid JSON object in this exact format:
                 clean_json = re.sub(r'```json|```', '', llm_res["content"]).strip()
                 parsed = json.loads(clean_json)
                 if "score" in parsed and "feedback" in parsed:
-                    print(f"🤖 [Python AI Service] Answer evaluated via {llm_res['service']} ({llm_res['model']})")
+                    f_acc = parsed.get('factors', {}).get('accuracy', parsed['score'])
+                    f_dep = parsed.get('factors', {}).get('depth', parsed['score'])
+                    print(f"🤖 [Python AI Service] Answer Evaluated via {llm_res['service']} ({llm_res.get('model', '')}) | Score: {parsed['score']}/100 | Accuracy: {f_acc}%, Depth: {f_dep}%")
                     parsed["source"] = f"python_{llm_res['service'].lower().replace(' ', '_')}"
                     return parsed
             except Exception as e:
                 print(f"⚠️ [Python AI Service Warning] Failed to parse Evaluation LLM JSON response: {e}")
 
-        print("⚡ [Python AI Service] Answer evaluated via Smart Local Heuristic Engine (Reason: All LLM providers failed or API keys missing)")
+        print("⚡ [Python AI Service] Answer evaluated via Dynamic Local Scoring Engine")
         words = candidate_answer.strip().split() if candidate_answer else []
         word_count = len(words)
         
-        if word_count < 10:
-            score = 50
-            feedback = "Your answer was very concise. Consider expanding with specific technical choices, code snippets, or architectural trade-offs."
-            factors = {"accuracy": 50, "completeness": 40, "depth": 45, "relevance": 65}
-        elif word_count < 30:
-            score = 75
-            feedback = "Good core response. Adding concrete production examples or metrics would make your answer significantly stronger."
-            factors = {"accuracy": 75, "completeness": 70, "depth": 70, "relevance": 85}
+        if word_count < 5:
+            score = 20
+            feedback = "Your answer was extremely short. Please elaborate with specific technical principles and architectural choices."
+            factors = {"accuracy": 20, "completeness": 15, "depth": 15, "relevance": 40}
+        elif word_count < 15:
+            score = 45
+            feedback = "Your response is high-level. To achieve a higher score, include concrete implementation details, code examples, or design tradeoffs."
+            factors = {"accuracy": 50, "completeness": 40, "depth": 35, "relevance": 60}
+        elif word_count < 35:
+            score = 70
+            feedback = "Good core answer. Mentioning error handling, monitoring, or real-world production metrics will make your answer stronger."
+            factors = {"accuracy": 72, "completeness": 68, "depth": 65, "relevance": 78}
         else:
             score = 88
-            feedback = "Excellent and detailed response covering key architectural principles and practical considerations."
-            factors = {"accuracy": 90, "completeness": 85, "depth": 88, "relevance": 90}
+            feedback = "Comprehensive and well-structured response demonstrating strong domain depth."
+            factors = {"accuracy": 90, "completeness": 85, "depth": 85, "relevance": 92}
 
         return {
             "score": score,
@@ -220,38 +225,43 @@ Return ONLY a valid JSON object in this exact format:
             "source": "python_local"
         }
 
-    def generate_report_summary(self, session: dict, answers: list):
-        qa_summary_text = "\n\n".join([
-            f"Question {idx + 1}: {ans.get('questionText', '')}\nCandidate Answer: {ans.get('answerText', 'No answer provided.')}\nEvaluation Score: {ans.get('evaluation', {}).get('score', 'N/A')}"
-            for idx, ans in enumerate(answers)
-        ])
-
-        company_name = session.get("companyName", "Tech Company")
+    def generate_session_report_summary(self, session: dict, answers: list):
         job_role = session.get("jobRole", "Software Engineer")
+        company_name = session.get("companyName", "Tech Company")
         interview_type = session.get("type", "technical")
-        difficulty = session.get("difficulty", "medium")
+        
+        answers_summary = []
+        for idx, ans in enumerate(answers):
+            q_text = ans.get("questionText") or ans.get("questionId", {}).get("text") or f"Question {idx + 1}"
+            cand_text = ans.get("candidateAnswer", "")
+            eval_data = ans.get("evaluation", {})
+            sc = eval_data.get("score", 70)
+            answers_summary.append(f"Question #{idx+1}: {q_text}\nCandidate Answer: '{cand_text}'\nEvaluation Score: {sc}/100")
 
-        prompt = f"""You are a Senior Principal AI Technical Recruiter evaluating a completed mock interview session.
-Candidate Role: {job_role} at {company_name}
-Round Type: {interview_type}
-Difficulty: {difficulty}
+        summary_str = "\n\n".join(answers_summary)
 
-Session Answers & Evaluations:
-{qa_summary_text}
+        prompt = f"""You are an Executive Technical Recruiter at {company_name} evaluating a candidate's completed {interview_type} mock interview for a {job_role} role.
 
-Generate a comprehensive, tailored, and highly professional interview feedback report.
-Return ONLY a valid JSON object in this exact format:
+Detailed Session Q&A Transcript and Candidate Responses:
+{summary_str}
+
+CRITICAL STRENGTHS RULE:
+- If the candidate's answers were brief, vague, or incomplete, return "strengths": [] (an empty array). DO NOT invent fake praise.
+- Only list strengths if the candidate genuinely demonstrated specific technical depth or solid problem solving.
+
+Return ONLY a valid raw JSON object in this exact format:
 {{
-  "overallSummary": "A detailed 3-4 sentence evaluation of how the candidate performed, highlighting domain knowledge, communication clarity, and technical readiness.",
-  "strengths": [
-    "Specific technical or architectural strength demonstrated in their answers",
-    "Another concrete strength identified"
-  ],
+  "overallScore": 45,
+  "technicalAccuracy": 40,
+  "technicalDepth": 35,
+  "communicationClarity": 50,
+  "overallSummary": "3-4 sentence evaluation tailored to their exact answers.",
+  "strengths": [],
   "weaknesses": [
-    "Specific area where their answers lacked depth, edge case coverage, or clarity",
+    "Specific area where their answers lacked depth or concrete architecture",
     "Another specific area for improvement"
   ],
-  "improvementPlan": "Actionable step-by-step guidance for the candidate to address their weaknesses before actual interviews."
+  "improvementPlan": "1. Step-by-step study and practice item tailored to their weak areas.\\n2. Next actionable practice item.\\n3. Production implementation recommendation."
 }}"""
 
         llm_res = self._call_llm(prompt)
@@ -259,29 +269,58 @@ Return ONLY a valid JSON object in this exact format:
             try:
                 clean_json = re.sub(r'```json|```', '', llm_res["content"]).strip()
                 parsed = json.loads(clean_json)
-                if "overallSummary" in parsed and "strengths" in parsed:
-                    print(f"🤖 [Python AI Service] Report summary generated via {llm_res['service']} ({llm_res['model']})")
+                if "overallSummary" in parsed and "overallScore" in parsed:
+                    print(f"🤖 [Python AI Service] Final Session Report & Scores Generated via {llm_res['service']} ({llm_res.get('model', '')}) | Overall AI Score: {parsed['overallScore']}/100 | Tech Accuracy: {parsed.get('technicalAccuracy', 0)}% | Tech Depth: {parsed.get('technicalDepth', 0)}%")
                     parsed["source"] = f"python_{llm_res['service'].lower().replace(' ', '_')}"
+                    
+                    if isinstance(parsed.get("improvementPlan"), list):
+                        parsed["improvementPlan"] = "\n".join([f"{i+1}. {step}" for i, step in enumerate(parsed["improvementPlan"])])
+                        
                     return parsed
             except Exception as e:
                 print(f"⚠️ [Python AI Service Warning] Failed to parse Report Summary LLM JSON response: {e}")
 
-        print("⚡ [Python AI Service] Report summary generated via Smart Local Heuristic Engine (Reason: All LLM providers failed or API keys missing)")
-        valid_scores = [ans.get('evaluation', {}).get('score') for ans in answers if isinstance(ans.get('evaluation', {}).get('score'), (int, float))]
-        avg_score = int(sum(valid_scores) / len(valid_scores)) if valid_scores else 75
+        print("⚡ [Python AI Service] Session Report generated via Local Heuristic Engine")
+        
+        scores = [ans.get("evaluation", {}).get("score", 0) for ans in answers]
+        avg_score = round(sum(scores) / max(len(scores), 1)) if scores else 0
+
+        if avg_score == 0:
+            return {
+                "overallScore": 0,
+                "technicalAccuracy": 0,
+                "technicalDepth": 0,
+                "communicationClarity": 0,
+                "overallSummary": f"The candidate completed a {interview_type} mock interview for the {job_role} position at {company_name}, receiving an overall score of 0/100 as no complete technical answers were provided.",
+                "strengths": [],
+                "weaknesses": [
+                    "No technical answers or explanation details were provided during the interview session.",
+                    "Must explain architectural choices, implementation steps, and production tradeoffs to earn score points."
+                ],
+                "improvementPlan": f"1. Review fundamental technical concepts for the target {job_role} role.\n2. Practice providing structured, step-by-step technical answers to interview questions.",
+                "source": "python_zero_score_guard"
+            }
+        all_words = " ".join([ans.get("candidateAnswer", "") for ans in answers]).lower()
+        tech_words = list(set(re.findall(r'\b(react|node|express|mongodb|python|docker|aws|redis|api|cache|kafka|sql|microservices|graphql|typescript|jwt|security|async|hooks|redux|ci/cd|pipeline)\b', all_words)))
+        
+        strengths_list = [f"Demonstrated domain familiarity with {', '.join(tech_words[:3])}."] if (avg_score >= 65 and tech_words) else []
 
         return {
-            "overallSummary": f"The candidate completed a {difficulty} {interview_type} mock interview for the {job_role} role at {company_name} with an overall average score of {avg_score}/100. They demonstrated solid core technical concepts and articulated system trade-offs effectively.",
-            "strengths": [
-                f"Clear articulation of concepts relevant to {job_role} roles.",
-                "Structured approach to problem solving and clear communication style."
-            ],
+            "overallScore": avg_score,
+            "technicalAccuracy": max(0, avg_score - 2),
+            "technicalDepth": max(0, avg_score - 5),
+            "communicationClarity": max(0, avg_score + 3),
+            "overallSummary": f"The candidate completed a {interview_type} mock interview for the {job_role} position at {company_name}, achieving an overall evaluation score of {avg_score}/100.",
+            "strengths": strengths_list,
             "weaknesses": [
-                "Could provide deeper concrete production examples and edge-case handling details.",
-                "Quantifiable performance metrics and telemetry strategies could be further elaborated."
+                "Include deeper production metrics, error handling, and performance trade-offs in answers.",
+                "Cover edge cases and failure recovery mechanisms when explaining architectural choices."
             ],
-            "improvementPlan": f"Review advanced system design patterns for {company_name}, practice explaining failure recovery strategies, and incorporate concrete metrics in future technical responses.",
+            "improvementPlan": f"1. Practice step-by-step system design trade-offs under timed conditions.\n2. Review core database indexing, caching strategies, and concurrency patterns for {job_role} roles.\n3. Prepare concrete production metrics from past engineering projects.",
             "source": "python_local"
         }
+
+    # Alias for method compatibility
+    generate_report_summary = generate_session_report_summary
 
 question_service = QuestionService()

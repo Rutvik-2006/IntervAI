@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -10,8 +10,8 @@ from services.question_service import question_service
 
 app = FastAPI(
     title="AI InterviewOS Python Microservice",
-    description="Python FastAPI engine for Question Generation, Answer Evaluation, Voice Metrics, Vision Analysis, and ATS Matching.",
-    version="1.1.0"
+    description="Python FastAPI engine for Question Generation, Answer Evaluation, Voice Metrics, Speech-to-Text (Whisper), Vision Analysis, and ATS Matching.",
+    version="1.2.0"
 )
 
 app.add_middleware(
@@ -59,6 +59,14 @@ def analyze_voice(req: VoiceAnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/voice/transcribe")
+async def transcribe_voice(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        return voice_service.transcribe_audio_file(contents, file.filename or "audio.webm")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/ats/analyze")
 def analyze_ats(req: AtsAnalysisRequest):
     try:
@@ -99,11 +107,12 @@ def evaluate_answer(req: AnswerEvaluateRequest):
 @app.post("/api/questions/report-summary")
 def generate_report_summary(req: ReportSummaryRequest):
     try:
-        return question_service.generate_report_summary(
+        return question_service.generate_session_report_summary(
             session=req.session,
             answers=req.answers
         )
     except Exception as e:
+        print(f"❌ [Python Main Error] report-summary endpoint exception: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
