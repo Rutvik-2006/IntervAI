@@ -9,6 +9,7 @@ import ResetPassword from '../features/auth/ResetPassword';
 import VerifyEmail from '../features/auth/VerifyEmail';
 import { useAuth } from '../context/AuthContext';
 import ResumeUpload from '../features/dashboard/ResumeUpload';
+import RecentSessionsList from '../features/dashboard/RecentSessionsList';
 import Button from '../components/common/Button';
 import StartInterviewModal from '../features/interview/StartInterviewModal';
 import TextInterviewRoom from '../features/interview/TextInterviewRoom';
@@ -106,8 +107,9 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col p-6">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col p-6 space-y-6">
         <ResumeUpload />
+        <RecentSessionsList />
       </main>
 
       <StartInterviewModal

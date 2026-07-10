@@ -69,7 +69,7 @@ class QuestionService:
             "Authorization": f"Bearer {self.groq_api_key}",
             "Content-Type": "application/json"
         }
-        models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192", "llama3-8b-8192", "gemma2-9b-it"]
         for model in models:
             payload = {
                 "model": model,
@@ -160,26 +160,50 @@ Generate the next highly realistic, organic, and probing interview question. Ret
         }
 
     def evaluate_answer(self, question_text: str, ideal_answer: str, candidate_answer: str):
+        text_clean = (candidate_answer or "").strip()
+
+        # Strict check for improper, single-word, or empty answers
+        if not text_clean or re.match(r'^(idk|no|yes|dont know|dunno|abc|test|asdf|na|none|nil)$', text_clean, re.IGNORECASE) or len(text_clean.split()) < 4:
+            print("🤖 [Python AI Service] Strict evaluation triggered: Improper or single-word answer detected -> Score: 0/100")
+            return {
+                "score": 0,
+                "feedback": "No meaningful or complete technical answer was provided. Candidate must explain concepts in detail.",
+                "factors": {
+                    "accuracy": 0,
+                    "completeness": 0,
+                    "depth": 0,
+                    "relevance": 10,
+                    "fluency": 0,
+                    "clarity": 0,
+                    "vocabulary": 10
+                },
+                "source": "python_strict_guard"
+            }
+
         prompt = f"""You are a strict, objective, and unbiased Senior Principal Technical Interviewer evaluating a candidate's answer.
 Question: "{question_text}"
 Ideal Target Concepts: "{ideal_answer or ''}"
 Candidate's Spoken/Written Answer: "{candidate_answer}"
 
-BE RIGOROUS AND ACCURATE IN SCORING (Scale 0-100):
-- Empty, nonsense, or extremely short ('idk', 'yes', 'no'): Score 0-25.
-- Vague, high-level, or generic answer with no depth: Score 30-55.
-- Partially correct answer covering some core concepts: Score 60-75.
-- Thorough, architecturally sound, comprehensive answer with concrete examples: Score 80-98.
+BE RIGOROUS AND STRICT IN SCORING (Scale 0-100):
+- Evaluate Technical Accuracy, Technical Depth, Completeness, and Relevance.
+- ALSO EVALUATE COMMUNICATION QUALITY:
+  * Fluency (0-100): Smoothness of expression, sentence continuity, and natural flow.
+  * Clarity (0-100): How clearly, logically, and coherently the candidate articulates their points.
+  * Vocabulary (0-100): Sophistication and precision of domain-specific technical terminology.
 
 Return ONLY a valid raw JSON object in this exact format:
 {{
   "score": 75,
-  "feedback": "Specific constructive feedback explaining what was good and what was missing in their answer.",
+  "feedback": "Constructive feedback explaining what was good and missing.",
   "factors": {{
     "accuracy": 75,
     "completeness": 70,
     "depth": 70,
-    "relevance": 85
+    "relevance": 85,
+    "fluency": 80,
+    "clarity": 85,
+    "vocabulary": 82
   }}
 }}"""
 
@@ -191,32 +215,36 @@ Return ONLY a valid raw JSON object in this exact format:
                 if "score" in parsed and "feedback" in parsed:
                     f_acc = parsed.get('factors', {}).get('accuracy', parsed['score'])
                     f_dep = parsed.get('factors', {}).get('depth', parsed['score'])
-                    print(f"🤖 [Python AI Service] Answer Evaluated via {llm_res['service']} ({llm_res.get('model', '')}) | Score: {parsed['score']}/100 | Accuracy: {f_acc}%, Depth: {f_dep}%")
+                    f_flu = parsed.get('factors', {}).get('fluency', parsed['score'])
+                    f_cla = parsed.get('factors', {}).get('clarity', parsed['score'])
+                    f_voc = parsed.get('factors', {}).get('vocabulary', parsed['score'])
+                    print(f"🤖 [Python AI Service] AI Evaluated Answer via {llm_res['service']} ({llm_res.get('model', '')}) | Score: {parsed['score']}/100 | Accuracy: {f_acc}% | Depth: {f_dep}% | Fluency: {f_flu}% | Clarity: {f_cla}% | Vocab: {f_voc}%")
                     parsed["source"] = f"python_{llm_res['service'].lower().replace(' ', '_')}"
                     return parsed
             except Exception as e:
                 print(f"⚠️ [Python AI Service Warning] Failed to parse Evaluation LLM JSON response: {e}")
 
-        print("⚡ [Python AI Service] Answer evaluated via Dynamic Local Scoring Engine")
-        words = candidate_answer.strip().split() if candidate_answer else []
+        print("⚡ [Python AI Service] Answer evaluated via Strict Local Scoring Engine")
+        words = text_clean.split()
         word_count = len(words)
+        unique_words = len(set([w.lower() for w in words]))
         
-        if word_count < 5:
-            score = 20
-            feedback = "Your answer was extremely short. Please elaborate with specific technical principles and architectural choices."
-            factors = {"accuracy": 20, "completeness": 15, "depth": 15, "relevance": 40}
-        elif word_count < 15:
-            score = 45
-            feedback = "Your response is high-level. To achieve a higher score, include concrete implementation details, code examples, or design tradeoffs."
-            factors = {"accuracy": 50, "completeness": 40, "depth": 35, "relevance": 60}
-        elif word_count < 35:
-            score = 70
-            feedback = "Good core answer. Mentioning error handling, monitoring, or real-world production metrics will make your answer stronger."
-            factors = {"accuracy": 72, "completeness": 68, "depth": 65, "relevance": 78}
+        if word_count < 8:
+            score = 15
+            feedback = "Your response is extremely brief and lacks technical substance. Please elaborate with specific concepts."
+            factors = {"accuracy": 15, "completeness": 10, "depth": 10, "relevance": 30, "fluency": 25, "clarity": 30, "vocabulary": 25}
+        elif word_count < 20:
+            score = 35
+            feedback = "Your response is high-level. To achieve a higher score, include concrete implementation details and design trade-offs."
+            factors = {"accuracy": 35, "completeness": 30, "depth": 25, "relevance": 50, "fluency": 55, "clarity": 60, "vocabulary": 50}
+        elif word_count < 40:
+            score = 65
+            feedback = "Good core response. Adding error handling or production metrics will make your answer stronger."
+            factors = {"accuracy": 68, "completeness": 62, "depth": 60, "relevance": 72, "fluency": 75, "clarity": 78, "vocabulary": 70}
         else:
-            score = 88
-            feedback = "Comprehensive and well-structured response demonstrating strong domain depth."
-            factors = {"accuracy": 90, "completeness": 85, "depth": 85, "relevance": 92}
+            score = 85
+            feedback = "Detailed and well-structured response covering key architectural principles."
+            factors = {"accuracy": 88, "completeness": 82, "depth": 82, "relevance": 88, "fluency": 85, "clarity": 88, "vocabulary": 84}
 
         return {
             "score": score,
@@ -235,7 +263,7 @@ Return ONLY a valid raw JSON object in this exact format:
             q_text = ans.get("questionText") or ans.get("questionId", {}).get("text") or f"Question {idx + 1}"
             cand_text = ans.get("candidateAnswer", "")
             eval_data = ans.get("evaluation", {})
-            sc = eval_data.get("score", 70)
+            sc = eval_data.get("score", 0)
             answers_summary.append(f"Question #{idx+1}: {q_text}\nCandidate Answer: '{cand_text}'\nEvaluation Score: {sc}/100")
 
         summary_str = "\n\n".join(answers_summary)
@@ -245,23 +273,26 @@ Return ONLY a valid raw JSON object in this exact format:
 Detailed Session Q&A Transcript and Candidate Responses:
 {summary_str}
 
-CRITICAL STRENGTHS RULE:
-- If the candidate's answers were brief, vague, or incomplete, return "strengths": [] (an empty array). DO NOT invent fake praise.
-- Only list strengths if the candidate genuinely demonstrated specific technical depth or solid problem solving.
+CRITICAL SCORING & STRENGTHS RULES:
+- Evaluate Overall Performance Score (0-100), Technical Accuracy (0-100), Technical Depth (0-100), and Communication Clarity (0-100).
+- If the candidate gave poor, improper, or brief answers ('idk', 'yes', vague text), set overallScore: 0 - 30.
+- If answers were poor, return "strengths": [] (an empty array). DO NOT invent fake praise.
+- Only award high scores (>75) if answers were genuinely detailed and technically accurate.
 
 Return ONLY a valid raw JSON object in this exact format:
 {{
-  "overallScore": 45,
-  "technicalAccuracy": 40,
-  "technicalDepth": 35,
-  "communicationClarity": 50,
-  "overallSummary": "3-4 sentence evaluation tailored to their exact answers.",
-  "strengths": [],
-  "weaknesses": [
-    "Specific area where their answers lacked depth or concrete architecture",
-    "Another specific area for improvement"
+  "overallScore": 78,
+  "technicalAccuracy": 80,
+  "technicalDepth": 75,
+  "communicationClarity": 82,
+  "overallSummary": "3-4 sentence comprehensive evaluation tailored to their exact answers.",
+  "strengths": [
+    "Specific technical strength demonstrated in their answers"
   ],
-  "improvementPlan": "1. Step-by-step study and practice item tailored to their weak areas.\\n2. Next actionable practice item.\\n3. Production implementation recommendation."
+  "weaknesses": [
+    "Specific area where their answers lacked depth or concrete architecture"
+  ],
+  "improvementPlan": "1. Step-by-step study item tailored to their weak areas.\\n2. Practical implementation recommendation."
 }}"""
 
         llm_res = self._call_llm(prompt)
@@ -270,7 +301,7 @@ Return ONLY a valid raw JSON object in this exact format:
                 clean_json = re.sub(r'```json|```', '', llm_res["content"]).strip()
                 parsed = json.loads(clean_json)
                 if "overallSummary" in parsed and "overallScore" in parsed:
-                    print(f"🤖 [Python AI Service] Final Session Report & Scores Generated via {llm_res['service']} ({llm_res.get('model', '')}) | Overall AI Score: {parsed['overallScore']}/100 | Tech Accuracy: {parsed.get('technicalAccuracy', 0)}% | Tech Depth: {parsed.get('technicalDepth', 0)}%")
+                    print(f"🤖 [Python AI Service] Final Session Report & Scores Generated via {llm_res['service']} ({llm_res.get('model', '')}) | Overall AI Score: {parsed['overallScore']}/100 | Tech Accuracy: {parsed.get('technicalAccuracy', 0)}% | Tech Depth: {parsed.get('technicalDepth', 0)}% | AI Comm Clarity: {parsed.get('communicationClarity', 0)}%")
                     parsed["source"] = f"python_{llm_res['service'].lower().replace(' ', '_')}"
                     
                     if isinstance(parsed.get("improvementPlan"), list):
@@ -300,6 +331,7 @@ Return ONLY a valid raw JSON object in this exact format:
                 "improvementPlan": f"1. Review fundamental technical concepts for the target {job_role} role.\n2. Practice providing structured, step-by-step technical answers to interview questions.",
                 "source": "python_zero_score_guard"
             }
+        
         all_words = " ".join([ans.get("candidateAnswer", "") for ans in answers]).lower()
         tech_words = list(set(re.findall(r'\b(react|node|express|mongodb|python|docker|aws|redis|api|cache|kafka|sql|microservices|graphql|typescript|jwt|security|async|hooks|redux|ci/cd|pipeline)\b', all_words)))
         

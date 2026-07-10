@@ -14,6 +14,15 @@ const EvaluationSchema = new mongoose.Schema({
     completeness: { type: Number, min: 0, max: 100 },
     depth: { type: Number, min: 0, max: 100 },
     relevance: { type: Number, min: 0, max: 100 },
+    fluency: { type: Number, min: 0, max: 100 },
+    clarity: { type: Number, min: 0, max: 100 },
+    vocabulary: { type: Number, min: 0, max: 100 },
+  },
+  pythonVoiceMetrics: {
+    type: mongoose.Schema.Types.Mixed,
+  },
+  pythonVisionMetrics: {
+    type: mongoose.Schema.Types.Mixed,
   },
 });
 

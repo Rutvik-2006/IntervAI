@@ -57,6 +57,29 @@ const InterviewReportView = () => {
 
   const overallScore = typeof session?.scores?.overall === 'number' ? session.scores.overall : 0;
 
+  const voiceAnswers = answers.filter((a) => a.evaluation?.pythonVoiceMetrics);
+  const hasVoiceMetrics = voiceAnswers.length > 0;
+  const showVoiceCard = hasVoiceMetrics;
+
+  const avgFluency = hasVoiceMetrics
+    ? Math.round(voiceAnswers.reduce((sum, a) => sum + (a.evaluation.pythonVoiceMetrics.fluency_score || a.evaluation.factors?.fluency || 0), 0) / voiceAnswers.length)
+    : 0;
+  const avgClarity = hasVoiceMetrics
+    ? Math.round(voiceAnswers.reduce((sum, a) => sum + (a.evaluation.pythonVoiceMetrics.clarity_score || a.evaluation.factors?.clarity || 0), 0) / voiceAnswers.length)
+    : 0;
+  const avgVocab = hasVoiceMetrics
+    ? Math.round(voiceAnswers.reduce((sum, a) => sum + (a.evaluation.pythonVoiceMetrics.vocabulary_score || a.evaluation.factors?.vocabulary || 0), 0) / voiceAnswers.length)
+    : 0;
+  const avgPace = hasVoiceMetrics
+    ? Math.round(voiceAnswers.reduce((sum, a) => sum + (a.evaluation.pythonVoiceMetrics.speaking_pace_score || 0), 0) / voiceAnswers.length)
+    : 0;
+  const avgWpm = hasVoiceMetrics
+    ? Math.round(voiceAnswers.reduce((sum, a) => sum + (a.evaluation.pythonVoiceMetrics.wpm || 0), 0) / voiceAnswers.length)
+    : 0;
+  const totalFillers = hasVoiceMetrics
+    ? voiceAnswers.reduce((sum, a) => sum + (a.evaluation.pythonVoiceMetrics.filler_count || 0), 0)
+    : 0;
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
       {/* Header */}
@@ -123,6 +146,39 @@ const InterviewReportView = () => {
             </div>
           </div>
         </div>
+
+        {/* Voice & Speech Analytics Summary Card */}
+        {showVoiceCard && (
+          <div className="rounded-2xl border border-purple-500/20 bg-purple-950/10 p-6 backdrop-blur-xl space-y-4">
+            <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-widest flex items-center gap-2">
+              🎙️ Voice Communication Analytics & Speech Breakdown
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 font-mono text-center">
+              <div className="rounded-xl border border-purple-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Speaking Pace</span>
+                <span className="text-xl font-bold text-cyan-300">{avgPace}/100</span>
+                <span className="text-[10px] text-slate-500 block">({avgWpm} WPM)</span>
+              </div>
+              <div className="rounded-xl border border-purple-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Fluency Score</span>
+                <span className="text-xl font-bold text-teal-300">{avgFluency}/100</span>
+              </div>
+              <div className="rounded-xl border border-purple-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Clarity Score</span>
+                <span className="text-xl font-bold text-purple-300">{avgClarity}/100</span>
+              </div>
+              <div className="rounded-xl border border-purple-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Vocabulary Score</span>
+                <span className="text-xl font-bold text-blue-300">{avgVocab}/100</span>
+              </div>
+              <div className="rounded-xl border border-purple-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Hesitation Fillers</span>
+                <span className="text-xl font-bold text-amber-300">{totalFillers}</span>
+                <span className="text-[10px] text-slate-500 block">Detected</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Strengths & Weaknesses Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,19 +262,20 @@ const InterviewReportView = () => {
                 {ans.evaluation?.pythonVoiceMetrics && (
                   <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-mono">
                     <span className="px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
-                      ⚡ Speech WPM: {ans.evaluation.pythonVoiceMetrics.wpm}
+                      ⚡ Pace: {ans.evaluation.pythonVoiceMetrics.speaking_pace_score || 80}/100 ({ans.evaluation.pythonVoiceMetrics.wpm} WPM)
                     </span>
                     <span className="px-2.5 py-1 rounded-md bg-teal-500/10 border border-teal-500/30 text-teal-300">
-                      🎯 Fluency Score: {ans.evaluation.pythonVoiceMetrics.fluency_score}/100
+                      🎯 Fluency: {ans.evaluation.pythonVoiceMetrics.fluency_score}/100
+                    </span>
+                    <span className="px-2.5 py-1 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300">
+                      🗣️ Clarity: {ans.evaluation.pythonVoiceMetrics.clarity_score}/100
+                    </span>
+                    <span className="px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/30 text-blue-300">
+                      📚 Vocab: {ans.evaluation.pythonVoiceMetrics.vocabulary_score || 80}/100
                     </span>
                     <span className="px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300">
-                      💬 Filler Words: {ans.evaluation.pythonVoiceMetrics.filler_count}
+                      💬 Fillers: {ans.evaluation.pythonVoiceMetrics.filler_count}
                     </span>
-                    {ans.evaluation?.pythonVisionMetrics && (
-                      <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
-                        👁️ Eye Contact: {ans.evaluation.pythonVisionMetrics.eye_contact_pct}%
-                      </span>
-                    )}
                   </div>
                 )}
               </div>

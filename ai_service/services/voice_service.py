@@ -6,10 +6,12 @@ class VoiceService:
     def analyze_audio_text(self, text: str, duration_seconds: float = 30.0):
         """
         Calculates speech & communication metrics 100% locally (0 External API Calls).
+        Computes Fluency, Clarity, Vocabulary, and Speaking Pace scores.
         """
         clean_text = text or ""
         words = re.findall(r'\b\w+\b', clean_text)
         word_count = len(words)
+        unique_words = len(set([w.lower() for w in words]))
         
         dur_val = float(duration_seconds) if duration_seconds else 0.0
         if dur_val > 1.0:
@@ -20,6 +22,7 @@ class VoiceService:
         minutes = duration / 60.0
         wpm = round(word_count / minutes, 1) if minutes > 0 else 0.0
         
+        # Detect filler words
         filler_dict = {
             "um": len(re.findall(r'\bum\b', clean_text, re.IGNORECASE)),
             "uh": len(re.findall(r'\buh\b', clean_text, re.IGNORECASE)),
@@ -36,14 +39,28 @@ class VoiceService:
         total_pauses = max(0, len(sentences) - 1 + int(filler_count * 0.5))
         avg_pause_duration = round(max(0.5, (duration - (word_count / 2.5)) / max(total_pauses, 1)), 1)
         
+        # 1. Speaking Pace Score (Optimal pace: 120 - 160 WPM)
         wpm_penalty = max(0.0, abs(wpm - 135) * 0.4)
-        filler_penalty = filler_count * 4
-        fluency_score = max(30, min(100, int(100 - wpm_penalty - filler_penalty)))
+        speaking_pace_score = max(20, min(100, int(100 - wpm_penalty))) if word_count > 0 else 0
         
-        clarity_score = max(40, min(100, int(82 + min(15, word_count * 0.15) - (filler_count * 2.5))))
-        communication_score = round((fluency_score + clarity_score) / 2.0, 1)
+        # 2. Fluency Score (Impacted by pace deviation & hesitation filler words)
+        filler_penalty = filler_count * 4.0
+        fluency_score = max(20, min(100, int(100 - (wpm_penalty * 0.5) - filler_penalty))) if word_count > 0 else 0
         
-        print(f"⚡ [Local Python Voice Service] Speech Analyzed (100% Offline Local) | WPM: {wpm} | Fillers: {filler_count} | Score: {communication_score}/100")
+        # 3. Clarity Score (Sentence structure & articulation)
+        clarity_score = max(20, min(100, int(75 + min(20, word_count * 0.3) - (filler_count * 3.0)))) if word_count > 0 else 0
+
+        # 4. Vocabulary Score (Lexical diversity: unique words ratio)
+        lexical_diversity = (unique_words / max(word_count, 1)) if word_count > 0 else 0
+        vocabulary_score = max(20, min(100, int(50 + (lexical_diversity * 40) + min(10, unique_words * 0.5)))) if word_count > 0 else 0
+        
+        # Overall Communication Score (Average of all 4 factors)
+        if word_count > 0:
+            communication_score = round((fluency_score + clarity_score + vocabulary_score + speaking_pace_score) / 4.0, 1)
+        else:
+            communication_score = 0.0
+        
+        print(f"⚡ [Local Python Voice Service] Communication Analyzed | WPM: {wpm} | Pace: {speaking_pace_score} | Fluency: {fluency_score} | Clarity: {clarity_score} | Vocab: {vocabulary_score} | Total Score: {communication_score}/100")
 
         return {
             "transcription": clean_text,
@@ -57,6 +74,14 @@ class VoiceService:
             },
             "fluency_score": fluency_score,
             "clarity_score": clarity_score,
+            "vocabulary_score": vocabulary_score,
+            "speaking_pace_score": speaking_pace_score,
+            "communication_factors": {
+                "fluency": fluency_score,
+                "clarity": clarity_score,
+                "vocabulary": vocabulary_score,
+                "speaking_pace": speaking_pace_score
+            },
             "communication_score": communication_score,
             "source": "offline_local_python_voice_engine"
         }
