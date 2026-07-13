@@ -7,6 +7,7 @@ from services.voice_service import voice_service
 from services.ats_service import ats_service
 from services.vision_service import vision_service
 from services.question_service import question_service
+from services.coding_service import coding_service
 
 app = FastAPI(
     title="AI InterviewOS Python Microservice",
@@ -48,9 +49,48 @@ class ReportSummaryRequest(BaseModel):
     session: Dict[str, Any]
     answers: List[Dict[str, Any]]
 
+class CodingExecuteRequest(BaseModel):
+    source_code: str
+    language: Optional[str] = "python"
+    test_cases: Optional[List[Dict[str, Any]]] = None
+
+class CodingEvaluateRequest(BaseModel):
+    problem_title: str
+    source_code: str
+    language: str
+    pass_count: int
+    total_count: int
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "service": "AI InterviewOS Python Microservice"}
+
+@app.post("/api/coding/generate")
+def generate_coding_question(req: QuestionGenerateRequest):
+    try:
+        return coding_service.generate_coding_question(req.session)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/coding/execute")
+def execute_coding_solution(req: CodingExecuteRequest):
+    try:
+        return coding_service.execute_code(req.source_code, req.language, req.test_cases)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/coding/evaluate")
+def evaluate_coding_solution(req: CodingEvaluateRequest):
+    try:
+        return coding_service.evaluate_code_quality(
+            problem_title=req.problem_title,
+            source_code=req.source_code,
+            language=req.language,
+            pass_count=req.pass_count,
+            total_count=req.total_count
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/voice/analyze")
 def analyze_voice(req: VoiceAnalysisRequest):

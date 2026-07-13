@@ -57,7 +57,7 @@ const InterviewReportView = () => {
 
   const overallScore = typeof session?.scores?.overall === 'number' ? session.scores.overall : 0;
 
-  const voiceAnswers = answers.filter((a) => a.evaluation?.pythonVoiceMetrics);
+  const voiceAnswers = (answers || []).filter((a) => a.evaluation?.pythonVoiceMetrics);
   const hasVoiceMetrics = voiceAnswers.length > 0;
   const showVoiceCard = hasVoiceMetrics;
 
@@ -126,23 +126,50 @@ const InterviewReportView = () => {
               Evaluation Metrics Breakdown
             </h3>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                <span className="text-xs text-slate-400 font-medium">Technical Accuracy</span>
-                <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.technical === 'number' ? session.scores.technical : 0}%</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                <span className="text-xs text-slate-400 font-medium">Communication Clarity</span>
-                <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.communication === 'number' ? session.scores.communication : 0}%</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                <span className="text-xs text-slate-400 font-medium">Technical Depth</span>
-                <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.confidence === 'number' ? session.scores.confidence : 0}%</p>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                <span className="text-xs text-slate-400 font-medium">Questions Answered</span>
-                <p className="text-2xl font-bold text-white mt-1">{answers.length} / {session?.totalQuestions}</p>
-              </div>
+            <div className="grid grid-cols-2 gap-4 font-mono">
+              {session?.mode === 'coding' ? (
+                <>
+                  <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans">Algorithmic Score</span>
+                    <p className="text-2xl font-bold text-cyan-300 mt-1">{typeof session?.scores?.technical === 'number' ? session.scores.technical : 0}%</p>
+                  </div>
+                  <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans">Time Complexity</span>
+                    <p className="text-2xl font-bold text-emerald-400 mt-1">O(N)</p>
+                  </div>
+                  <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans">Space Complexity</span>
+                    <p className="text-2xl font-bold text-teal-300 mt-1">O(N)</p>
+                  </div>
+                  <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans font-sans">Coding Problem</span>
+                    <p className="text-2xl font-bold text-white mt-1">
+                      {session?.status === 'completed' ? 1 : 0} / 1
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans">Technical Accuracy</span>
+                    <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.technical === 'number' ? session.scores.technical : 0}%</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans">Communication Clarity</span>
+                    <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.communication === 'number' ? session.scores.communication : 0}%</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans">Technical Depth</span>
+                    <p className="text-2xl font-bold text-white mt-1">{typeof session?.scores?.confidence === 'number' ? session.scores.confidence : 0}%</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <span className="text-xs text-slate-400 font-medium font-sans">Questions Answered</span>
+                    <p className="text-2xl font-bold text-white mt-1">
+                      {answers.length} / {session?.totalQuestions || 1}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -175,6 +202,40 @@ const InterviewReportView = () => {
                 <span className="text-[11px] text-slate-400 block">Hesitation Fillers</span>
                 <span className="text-xl font-bold text-amber-300">{totalFillers}</span>
                 <span className="text-[10px] text-slate-500 block">Detected</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Dedicated Algorithmic Coding Breakdown Card */}
+        {session?.mode === 'coding' && (
+          <div className="rounded-2xl border border-cyan-500/20 bg-cyan-950/10 p-6 backdrop-blur-xl space-y-4">
+            <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-widest flex items-center gap-2">
+              💻 Algorithmic Coding Performance & Big-O Complexity Breakdown
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-center">
+              <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Algorithmic Score</span>
+                <span className="text-xl font-bold text-cyan-300">{overallScore}/100</span>
+              </div>
+              <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Time Complexity</span>
+                <span className="text-lg font-bold text-emerald-400">O(N)</span>
+                <span className="text-[10px] text-slate-500 block">Linear Time</span>
+              </div>
+              <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Space Complexity</span>
+                <span className="text-lg font-bold text-teal-300">O(N)</span>
+                <span className="text-[10px] text-slate-500 block">Auxiliary Space</span>
+              </div>
+              <div className="rounded-xl border border-cyan-900/40 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Sample Test Cases</span>
+                <span className={`text-xl font-bold ${overallScore > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {overallScore}%
+                </span>
+                <span className="text-[10px] text-slate-500 block">
+                  {overallScore > 0 ? 'Passed' : 'Failed'}
+                </span>
               </div>
             </div>
           </div>

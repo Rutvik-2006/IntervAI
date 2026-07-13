@@ -117,7 +117,11 @@ Generate the next highly realistic, organic, and probing interview question. Ret
         if llm_res and "content" in llm_res:
             try:
                 clean_json = re.sub(r'```json|```', '', llm_res["content"]).strip()
-                parsed = json.loads(clean_json)
+                try:
+                    parsed = json.loads(clean_json, strict=False)
+                except Exception:
+                    clean_json_fixed = re.sub(r'[\r\n]+', r'\n', clean_json)
+                    parsed = json.loads(clean_json_fixed, strict=False)
                 if "text" in parsed and "idealAnswer" in parsed:
                     print(f"🤖 [Python AI Service] Question generated via {llm_res['service']} ({llm_res.get('model', '')})")
                     return {"text": parsed["text"], "idealAnswer": parsed["idealAnswer"], "source": f"python_{llm_res['service'].lower().replace(' ', '_')}"}
@@ -211,7 +215,11 @@ Return ONLY a valid raw JSON object in this exact format:
         if llm_res and "content" in llm_res:
             try:
                 clean_json = re.sub(r'```json|```', '', llm_res["content"]).strip()
-                parsed = json.loads(clean_json)
+                try:
+                    parsed = json.loads(clean_json, strict=False)
+                except Exception:
+                    clean_json_fixed = re.sub(r'[\r\n]+', r'\n', clean_json)
+                    parsed = json.loads(clean_json_fixed, strict=False)
                 if "score" in parsed and "feedback" in parsed:
                     f_acc = parsed.get('factors', {}).get('accuracy', parsed['score'])
                     f_dep = parsed.get('factors', {}).get('depth', parsed['score'])
@@ -299,7 +307,11 @@ Return ONLY a valid raw JSON object in this exact format:
         if llm_res and "content" in llm_res:
             try:
                 clean_json = re.sub(r'```json|```', '', llm_res["content"]).strip()
-                parsed = json.loads(clean_json)
+                try:
+                    parsed = json.loads(clean_json, strict=False)
+                except Exception:
+                    clean_json_fixed = re.sub(r'[\r\n]+', r'\n', clean_json)
+                    parsed = json.loads(clean_json_fixed, strict=False)
                 if "overallSummary" in parsed and "overallScore" in parsed:
                     print(f"🤖 [Python AI Service] Final Session Report & Scores Generated via {llm_res['service']} ({llm_res.get('model', '')}) | Overall AI Score: {parsed['overallScore']}/100 | Tech Accuracy: {parsed.get('technicalAccuracy', 0)}% | Tech Depth: {parsed.get('technicalDepth', 0)}% | AI Comm Clarity: {parsed.get('communicationClarity', 0)}%")
                     parsed["source"] = f"python_{llm_res['service'].lower().replace(' ', '_')}"

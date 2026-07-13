@@ -19,7 +19,7 @@ const InterviewSessionSchema = new mongoose.Schema(
     mode: {
       type: String,
       required: [true, 'Interview mode is required'],
-      enum: ['text', 'voice', 'video'],
+      enum: ['text', 'voice', 'video', 'coding'],
     },
     jobRole: {
       type: String,

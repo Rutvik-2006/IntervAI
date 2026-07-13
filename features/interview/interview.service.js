@@ -277,11 +277,18 @@ class InterviewService {
       jobRole,
       companyName,
       difficulty,
-      totalQuestions,
+      totalQuestions: mode === 'coding' ? 1 : totalQuestions,
       currentQuestionIndex: 0,
       status: 'in_progress',
       startedAt: new Date(),
     });
+
+    if (mode === 'coding') {
+      return {
+        session,
+        firstQuestion: null,
+      };
+    }
 
     // Generate all interview questions dynamically via AI Engine using candidate's resume
     const dynamicQuestions = await this.generateDynamicQuestions(session, activeResume, totalQuestions);
@@ -301,6 +308,13 @@ class InterviewService {
 
     if (session.userId.toString() !== userId.toString()) {
       throw new AppError('Unauthorized access to this interview session.', 403);
+    }
+
+    if (session.mode === 'coding') {
+      return {
+        session,
+        question: null,
+      };
     }
 
     const questionOrder = session.currentQuestionIndex + 1;

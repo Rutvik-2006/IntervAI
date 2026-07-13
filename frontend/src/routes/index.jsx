@@ -14,10 +14,11 @@ import Button from '../components/common/Button';
 import StartInterviewModal from '../features/interview/StartInterviewModal';
 import TextInterviewRoom from '../features/interview/TextInterviewRoom';
 import VoiceInterviewRoom from '../features/interview/VoiceInterviewRoom';
+import CodingInterviewRoom from '../features/interview/CodingInterviewRoom';
 import InterviewReportView from '../features/interview/InterviewReportView';
 import API from '../api/axios';
 
-// Router component that dispatches to Text or Voice room based on session mode or query param
+// Router component that dispatches to Text, Voice, or Coding room based on session mode or query param
 const InterviewRoomDispatcher = () => {
   const { sessionId } = useParams();
   const [searchParams] = useSearchParams();
@@ -45,6 +46,10 @@ const InterviewRoomDispatcher = () => {
         Loading interview environment...
       </div>
     );
+  }
+
+  if (sessionMode === 'coding') {
+    return <CodingInterviewRoom />;
   }
 
   if (sessionMode === 'voice') {

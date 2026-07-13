@@ -57,10 +57,12 @@ app.use(cookieParser(process.env.COOKIE_SECRET || 'secret-cookie-key'));
 const authRouter = require('./features/auth/auth.routes');
 const resumeRouter = require('./features/resume/resume.routes');
 const interviewRouter = require('./features/interview/interview.routes');
+const codingRouter = require('./features/coding/coding.routes');
 
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/resumes', resumeRouter);
 app.use('/api/v1/interviews', interviewRouter);
+app.use('/api/v1/coding', codingRouter);
 
 // Test API status
 app.get('/health', (req, res) => {

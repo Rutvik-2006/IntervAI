@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Building2, Briefcase, BarChart2, Layers, Volume2, MessageSquare } from 'lucide-react';
+import { X, Sparkles, Building2, Briefcase, BarChart2, Layers, Volume2, MessageSquare, Code } from 'lucide-react';
 import Button from '../../components/common/Button';
 
 const StartInterviewModal = ({ isOpen, onClose, onStart, loading, error }) => {
@@ -21,7 +21,11 @@ const StartInterviewModal = ({ isOpen, onClose, onStart, loading, error }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onStart(formData);
+    const finalData = { ...formData };
+    if (finalData.mode === 'coding') {
+      finalData.totalQuestions = 1;
+    }
+    onStart(finalData);
   };
 
   return (
@@ -47,36 +51,49 @@ const StartInterviewModal = ({ isOpen, onClose, onStart, loading, error }) => {
             </div>
           )}
 
-          {/* Interview Mode Selector (Text vs Voice) */}
+          {/* Interview Mode Selector (Text vs Voice vs Coding) */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               Interview Mode
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setFormData((prev) => ({ ...prev, mode: 'text' }))}
-                className={`flex items-center justify-center space-x-2 rounded-xl border p-3 text-xs font-semibold transition-all ${
+                className={`flex items-center justify-center space-x-1.5 rounded-xl border p-2.5 text-xs font-semibold transition-all ${
                   formData.mode === 'text'
                     ? 'border-indigo-500 bg-indigo-600/20 text-indigo-300 shadow-md'
                     : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
                 }`}
               >
-                <MessageSquare size={16} />
-                <span>Text Interview</span>
+                <MessageSquare size={15} />
+                <span>Text Mode</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setFormData((prev) => ({ ...prev, mode: 'voice' }))}
-                className={`flex items-center justify-center space-x-2 rounded-xl border p-3 text-xs font-semibold transition-all ${
+                className={`flex items-center justify-center space-x-1.5 rounded-xl border p-2.5 text-xs font-semibold transition-all ${
                   formData.mode === 'voice'
                     ? 'border-emerald-500 bg-emerald-600/20 text-emerald-300 shadow-md'
                     : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
                 }`}
               >
-                <Volume2 size={16} />
-                <span>Voice (Whisper AI)</span>
+                <Volume2 size={15} />
+                <span>Voice Mode</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, mode: 'coding' }))}
+                className={`flex items-center justify-center space-x-1.5 rounded-xl border p-2.5 text-xs font-semibold transition-all ${
+                  formData.mode === 'coding'
+                    ? 'border-cyan-500 bg-cyan-600/20 text-cyan-300 shadow-md'
+                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <Code size={15} />
+                <span>Coding Round</span>
               </button>
             </div>
           </div>
