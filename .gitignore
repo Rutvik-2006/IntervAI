@@ -1,63 +1,69 @@
-# Dependency directories
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+.env
+.env.*
+*.env
+*.pem
+*.key
+
+# ==========================================
+# AI Models & Large Binary Weights
+# ==========================================
+*.zip
+*.pt
+*.onnx
+*.engine
+yolov8n.pt
+runs/
+
+# ==========================================
+# Node.js Dependencies & Build Outputs
+# ==========================================
 node_modules/
-jspm_packages/
-web_modules/
-
-# Python artifacts
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-.venv/
-.pytest_cache/
-*.egg-info/
-
-# Debug logs
+dist/
+dist-ssr/
+build/
+.next/
+out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*.log
 
-# Operating System files
-.DS_Store
-Thumbs.db
+# ==========================================
+# Python Cache & Virtual Environments
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+*.egg-info/
 
-# Build outputs
-dist/
-build/
-.next/
-.nuxt/
-out/
-
-# Environment files & Secrets
-.env
-.env.local
-.env.development
-.env.test
-.env.production
-.env.*.local
-*.pem
-*.key
-
-# File Uploads & Local Media
+# ==========================================
+# File Uploads & Temporary Media
+# ==========================================
 uploads/
 temp/
+coverage/
 
-# IDE configurations
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
+# ==========================================
+# Operating System & IDE Configs
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
 .idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Docker logs and overrides
-docker-compose.override.yml

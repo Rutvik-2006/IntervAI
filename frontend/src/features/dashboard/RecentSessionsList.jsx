@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../../api/axios';
 import Button from '../../components/common/Button';
-import { Play, FileText, Mic, CheckCircle2, Clock, ChevronRight, Award } from 'lucide-react';
+import { Play, FileText, Mic, CheckCircle2, Clock, ChevronRight, Award, Code } from 'lucide-react';
 
 const RecentSessionsList = () => {
   const [sessions, setSessions] = useState([]);
@@ -59,7 +59,7 @@ const RecentSessionsList = () => {
           <Clock className="mx-auto text-slate-500" size={32} />
           <p className="text-sm font-medium text-slate-300">No mock interview sessions found.</p>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Start a new Text or Voice interview session to practice questions and receive detailed AI evaluation reports!
+            Start a new Text, Voice, or Coding interview session to receive detailed AI evaluation reports!
           </p>
         </div>
       ) : (
@@ -68,6 +68,7 @@ const RecentSessionsList = () => {
             const isCompleted = sess.status === 'completed';
             const overallScore = typeof sess.scores?.overall === 'number' ? sess.scores.overall : 0;
             const isVoice = sess.mode === 'voice';
+            const isCoding = sess.mode === 'coding';
 
             return (
               <div
@@ -79,14 +80,16 @@ const RecentSessionsList = () => {
                     <span className="text-sm font-bold text-white">{sess.companyName}</span>
                     <span className="text-xs text-slate-400">• {sess.jobRole}</span>
                     <span
-                      className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-medium border ${
-                        isVoice
-                          ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
-                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                      className={`inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full font-medium border ${
+                        isCoding
+                          ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                          : isVoice
+                          ? 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30'
                       }`}
                     >
-                      {isVoice ? <Mic size={10} /> : <FileText size={10} />}
-                      {isVoice ? 'Voice Mode' : 'Text Mode'}
+                      {isCoding ? <Code size={11} /> : isVoice ? <Mic size={11} /> : <FileText size={11} />}
+                      {isCoding ? 'Coding Round' : isVoice ? 'Voice Mode' : 'Text Mode'}
                     </span>
                   </div>
 
@@ -120,7 +123,15 @@ const RecentSessionsList = () => {
                     </>
                   ) : (
                     <Button
-                      onClick={() => navigate(isVoice ? `/interview/${sess._id}?mode=voice` : `/interview/${sess._id}`)}
+                      onClick={() =>
+                        navigate(
+                          isCoding
+                            ? `/interview/${sess._id}?mode=coding`
+                            : isVoice
+                            ? `/interview/${sess._id}?mode=voice`
+                            : `/interview/${sess._id}`
+                        )
+                      }
                       variant="secondary"
                       className="!py-1.5 !px-4 text-xs flex items-center gap-1"
                     >

@@ -11,6 +11,7 @@ router.post('/start', interviewController.startSession);
 router.get('/history', interviewController.getHistory);
 router.get('/:sessionId/current-question', interviewController.getCurrentQuestion);
 router.post('/:sessionId/submit-answer', interviewController.submitAnswer);
+router.post('/:sessionId/cheating-event', interviewController.logCheatingEvent);
 router.get('/:sessionId/report', interviewController.getReport);
 
 module.exports = router;

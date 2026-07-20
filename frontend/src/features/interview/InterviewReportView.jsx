@@ -11,6 +11,7 @@ const InterviewReportView = () => {
   const [session, setSession] = useState(null);
   const [report, setReport] = useState(null);
   const [answers, setAnswers] = useState([]);
+  const [proctoring, setProctoring] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -22,6 +23,7 @@ const InterviewReportView = () => {
         setSession(response.data.data.session);
         setReport(response.data.data.report);
         setAnswers(response.data.data.answers || []);
+        setProctoring(response.data.data.proctoring || null);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch interview report.');
@@ -235,6 +237,54 @@ const InterviewReportView = () => {
                 </span>
                 <span className="text-[10px] text-slate-500 block">
                   {overallScore > 0 ? 'Passed' : 'Failed'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AI Anti-Cheating & Candidate Integrity Card */}
+        {proctoring && (
+          <div className={`rounded-2xl border p-6 backdrop-blur-xl space-y-4 ${
+            proctoring.cheatingFlagged
+              ? 'border-rose-500/30 bg-rose-950/10'
+              : 'border-emerald-500/20 bg-emerald-950/10'
+          }`}>
+            <h3 className={`text-xs font-bold uppercase tracking-widest flex items-center justify-between ${
+              proctoring.cheatingFlagged ? 'text-rose-400' : 'text-emerald-400'
+            }`}>
+              <span>🛡️ AI Proctoring & Anti-Cheating Integrity Score</span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                proctoring.cheatingFlagged
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                  : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              }`}>
+                {proctoring.cheatingFlagged ? '⚠️ Cheating Flagged' : '✅ Verified High Integrity'}
+              </span>
+            </h3>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-center">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Integrity Score</span>
+                <span className={`text-xl font-bold ${proctoring.integrityScore >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {proctoring.integrityScore}%
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Total Incidents</span>
+                <span className="text-xl font-bold text-cyan-300">{proctoring.totalIncidents}</span>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Camera Proctoring</span>
+                <span className="text-xl font-bold text-teal-300">Active</span>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+                <span className="text-[11px] text-slate-400 block">Status</span>
+                <span className={`text-sm font-bold ${proctoring.cheatingFlagged ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {proctoring.cheatingFlagged ? 'Flagged' : 'Passed'}
                 </span>
               </div>
             </div>

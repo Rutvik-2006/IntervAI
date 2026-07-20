@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Bot, User, Send, ArrowLeft, Loader2, Sparkles, CheckCircle2, ShieldAlert } from 'lucide-react';
 import API from '../../api/axios';
 import Button from '../../components/common/Button';
+import WebcamMonitor from './WebcamMonitor';
 
 const TextInterviewRoom = () => {
   const { sessionId } = useParams();
@@ -191,6 +192,9 @@ const TextInterviewRoom = () => {
           </div>
         </form>
       </main>
+
+      {/* Floating AI Proctoring Webcam Feed */}
+      <WebcamMonitor sessionId={sessionId} />
     </div>
   );
 };

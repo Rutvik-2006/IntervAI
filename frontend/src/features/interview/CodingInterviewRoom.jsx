@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import API from '../../api/axios';
+import WebcamMonitor from './WebcamMonitor';
 
 export default function CodingInterviewRoom() {
   const { sessionId } = useParams();
@@ -370,6 +371,9 @@ export default function CodingInterviewRoom() {
           </div>
         </div>
       </div>
+
+      {/* Floating AI Proctoring Webcam Feed */}
+      <WebcamMonitor sessionId={sessionId} />
     </div>
   );
 }

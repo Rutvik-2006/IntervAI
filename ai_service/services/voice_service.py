@@ -54,6 +54,14 @@ class VoiceService:
         lexical_diversity = (unique_words / max(word_count, 1)) if word_count > 0 else 0
         vocabulary_score = max(20, min(100, int(50 + (lexical_diversity * 40) + min(10, unique_words * 0.5)))) if word_count > 0 else 0
         
+        # Strict Short Answer Guard (< 5 words get penalized proportionally)
+        if word_count < 5:
+            penalty_score = int(word_count * 5)
+            speaking_pace_score = min(speaking_pace_score, penalty_score)
+            fluency_score = min(fluency_score, penalty_score)
+            clarity_score = min(clarity_score, penalty_score)
+            vocabulary_score = min(vocabulary_score, penalty_score)
+
         # Overall Communication Score (Average of all 4 factors)
         if word_count > 0:
             communication_score = round((fluency_score + clarity_score + vocabulary_score + speaking_pace_score) / 4.0, 1)

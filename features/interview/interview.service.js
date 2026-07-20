@@ -159,11 +159,18 @@ class InterviewService {
       accuracy += 10;
     }
 
-    // Clamp values between 0 and 100
-    accuracy = Math.min(Math.max(accuracy, 30), 100);
-    completeness = Math.min(Math.max(completeness, 30), 100);
-    depth = Math.min(Math.max(depth, 30), 100);
-    relevance = Math.min(Math.max(relevance, 30), 100);
+    if (wordCount < 5) {
+      const shortPenalty = wordCount * 5;
+      accuracy = Math.min(accuracy, shortPenalty);
+      completeness = Math.min(completeness, shortPenalty);
+      depth = Math.min(depth, shortPenalty);
+      relevance = Math.min(relevance, shortPenalty);
+    } else {
+      accuracy = Math.min(Math.max(accuracy, 20), 100);
+      completeness = Math.min(Math.max(completeness, 20), 100);
+      depth = Math.min(Math.max(depth, 20), 100);
+      relevance = Math.min(Math.max(relevance, 20), 100);
+    }
 
     const overallScore = Math.round((accuracy + completeness + depth + relevance) / 4);
 
@@ -318,7 +325,23 @@ class InterviewService {
     }
 
     const questionOrder = session.currentQuestionIndex + 1;
-    const question = await interviewRepository.findQuestionBySessionAndOrder(sessionId, questionOrder);
+    let question = await interviewRepository.findQuestionBySessionAndOrder(sessionId, questionOrder);
+
+    if (!question && session.mode !== 'coding') {
+      const defaultText = session.type === 'hr'
+        ? 'Tell me about yourself, your technical background, and what interests you in this role.'
+        : 'Can you explain the key architecture, state management, and performance trade-offs of a project you built recently?';
+
+      const created = await interviewRepository.createQuestions([{
+        sessionId: session._id,
+        text: defaultText,
+        type: session.type || 'technical',
+        idealAnswer: 'Candidate should describe architecture, state management, API design, and performance optimizations.',
+        difficulty: session.difficulty || 'medium',
+        order: questionOrder,
+      }]);
+      question = created[0];
+    }
 
     return {
       session,
@@ -346,7 +369,19 @@ class InterviewService {
     }
 
     if (!question) {
-      throw new AppError('Question not found for current sequence.', 400);
+      const defaultText = session.type === 'hr'
+        ? 'Tell me about a challenging situation you faced in your recent project and how you resolved it.'
+        : 'Can you explain the key architecture, state management, and performance trade-offs of a project you built recently?';
+
+      const created = await interviewRepository.createQuestions([{
+        sessionId: session._id,
+        text: defaultText,
+        type: session.type || 'technical',
+        idealAnswer: 'Candidate should describe architecture, state management, API design, and performance optimizations.',
+        difficulty: session.difficulty || 'medium',
+        order: session.currentQuestionIndex + 1,
+      }]);
+      question = created[0];
     }
 
     // Evaluate response using Gemini LLM AI Engine (with heuristic fallback)
@@ -497,6 +532,18 @@ class InterviewService {
     return report;
   }
 
+  async logCheatingEvent(userId, sessionId, eventType, severity = 'medium', details = '') {
+    const CheatingLog = require('../../models/CheatingLog');
+    const log = await CheatingLog.create({
+      sessionId,
+      userId,
+      eventType,
+      severity,
+      details,
+    });
+    return log;
+  }
+
   async getSessionReport(userId, sessionId) {
     const session = await interviewRepository.findSessionById(sessionId);
     if (!session) {
@@ -510,10 +557,30 @@ class InterviewService {
     const report = await interviewRepository.findReportBySessionId(sessionId);
     const answers = await interviewRepository.findAnswersBySessionId(sessionId);
 
+    const CheatingLog = require('../../models/CheatingLog');
+    const cheatingLogs = await CheatingLog.find({ sessionId }).sort({ timestamp: 1 });
+
+    let integrityDeduction = 0;
+    cheatingLogs.forEach((log) => {
+      if (log.eventType === 'phone_detected') integrityDeduction += 25;
+      else if (log.eventType === 'tab_switch' || log.eventType === 'window_blur') integrityDeduction += 10;
+      else if (log.eventType === 'multi_face') integrityDeduction += 15;
+      else if (log.eventType === 'no_face' || log.eventType === 'gaze_away') integrityDeduction += 5;
+    });
+
+    const integrityScore = Math.max(0, 100 - integrityDeduction);
+    const cheatingFlagged = integrityScore < 75 || cheatingLogs.length >= 3;
+
     return {
       session,
       report,
       answers,
+      proctoring: {
+        integrityScore,
+        cheatingFlagged,
+        totalIncidents: cheatingLogs.length,
+        logs: cheatingLogs,
+      },
     };
   }
 

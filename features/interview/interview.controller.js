@@ -66,6 +66,18 @@ class InterviewController {
     });
   });
 
+  logCheatingEvent = catchAsync(async (req, res, next) => {
+    const { sessionId } = req.params;
+    const { eventType, severity, details } = req.body;
+
+    const log = await interviewService.logCheatingEvent(req.user._id, sessionId, eventType, severity, details);
+
+    res.status(201).json({
+      status: 'success',
+      data: { log },
+    });
+  });
+
   getHistory = catchAsync(async (req, res, next) => {
     const sessions = await interviewService.getUserSessions(req.user._id);
 

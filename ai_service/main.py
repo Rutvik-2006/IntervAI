@@ -117,7 +117,7 @@ def analyze_ats(req: AtsAnalysisRequest):
 @app.post("/api/vision/analyze")
 def analyze_vision(req: VisionAnalysisRequest):
     try:
-        return vision_service.analyze_webcam_frame(req.frame_data)
+        return vision_service.analyze_base64_frame(req.frame_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
